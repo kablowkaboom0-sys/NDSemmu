@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+  <meta name="theme-color" content="#080a0f">
+  <title>NDSemmu — Nintendo DS Emulator</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app">
+    <header>
+      <h1>NDSemmu</h1>
+      <p>Local Nintendo DS emulation</p>
+    </header>
+
+    <section class="loader">
+      <label class="file-button">
+        Choose a DS game
+        <input id="rom" type="file" accept=".nds,.srl,.dsi,application/octet-stream">
+      </label>
+      <button id="fullscreen" type="button">Fullscreen</button>
+      <span id="status">Choose an .nds file from your device.</span>
+    </section>
+
+    <section id="player-wrap" aria-label="Nintendo DS emulator">
+      <desmond-player id="player"></desmond-player>
+    </section>
+
+    <footer>
+      <span>ROMs are read locally by your browser.</span>
+      <span>No iframe • No CDN • No remote ROM loading</span>
+    </footer>
+  </main>
+
+  <script src="desmond.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
