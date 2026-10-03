@@ -4,13 +4,23 @@ const status = document.getElementById("status");
 const fullscreen = document.getElementById("fullscreen");
 
 let romUrl = null;
+let loadTimer = null;
 let running = false;
 
 function setStatus(message) {
   status.textContent = message;
 }
 
+function clearLoadTimer() {
+  if (loadTimer) {
+    clearTimeout(loadTimer);
+    loadTimer = null;
+  }
+}
+
 function loadRom(file) {
+  clearLoadTimer();
+
   if (!file) return;
 
   const lower = file.name.toLowerCase();
@@ -23,18 +33,31 @@ function loadRom(file) {
   if (romUrl) URL.revokeObjectURL(romUrl);
   romUrl = URL.createObjectURL(file);
   running = false;
-  setStatus("Loading " + file.name + " locally…");
+
+  setStatus("Loading " + file.name + " (" + Math.round(file.size / 1024 / 1024 * 10) / 10 + " MB)…");
 
   try {
     if (!player || typeof player.loadURL !== "function") {
-      throw new Error("The local DS emulator runtime is not loaded. Make sure desmond.min.js and desmond.wasm are present in this repository.");
+      throw new Error("The local DS emulator runtime is not loaded.");
     }
 
+    // Desmond's own demo uses the same object-URL method for local ROM files.
     player.loadURL(romUrl, () => {
+      clearLoadTimer();
       running = true;
-      setStatus(file.name + " is running. Keyboard controls: D-pad = Arrow keys, A = X, B = Z, L = A, R = S, Start = Enter, Select = Shift.");
+      setStatus(file.name + " is running. Arrow keys = D-pad • X = A • Z = B • A = L • S = R • Enter = Start • Shift = Select");
     });
+
+    // The emulator can take a while to initialize its WebAssembly runtime.
+    // Keep the page informative instead of appearing to do nothing.
+    setStatus("Starting " + file.name + "… The DS emulator is initializing locally.");
+    loadTimer = setTimeout(() => {
+      if (!running) {
+        setStatus("Still loading… If the screen stays blank after 30 seconds, this browser may not support this DS emulator build.");
+      }
+    }, 30000);
   } catch (err) {
+    clearLoadTimer();
     console.error(err);
     running = false;
     setStatus("Could not start the emulator: " + (err?.message || err));
@@ -45,26 +68,13 @@ function loadRom(file) {
 
 input.addEventListener("change", () => loadRom(input.files && input.files[0]));
 
-// Keep the emulator from losing keyboard focus when the page itself is focused.
-// Desmond handles keyboard input at the document level; these controls are the
-// conventional keys used by the web build.
 document.addEventListener("keydown", (event) => {
   if (!running) return;
 
-  const keyMap = {
-    ArrowUp: "ArrowUp",
-    ArrowDown: "ArrowDown",
-    ArrowLeft: "ArrowLeft",
-    ArrowRight: "ArrowRight",
-    x: "x",
-    z: "z",
-    a: "a",
-    s: "s",
-    Enter: "Enter",
-    Shift: "Shift"
-  };
-
-  if (keyMap[event.key] || ["x", "z", "a", "s"].includes(event.key.toLowerCase())) {
+  const key = event.key.toLowerCase();
+  if (
+    ["arrowup", "arrowdown", "arrowleft", "arrowright", "x", "z", "a", "s", "enter", "shift"].includes(key)
+  ) {
     event.preventDefault();
   }
 }, { passive: false });
@@ -83,13 +93,12 @@ fullscreen.addEventListener("click", async () => {
 });
 
 window.addEventListener("beforeunload", () => {
+  clearLoadTimer();
   if (romUrl) URL.revokeObjectURL(romUrl);
 });
 
-// Give a useful diagnostic instead of silently failing when the local runtime
-// files have not yet been vendored by the GitHub Action.
 window.addEventListener("load", () => {
   if (!customElements.get("desmond-player")) {
-    setStatus("DS emulator runtime is missing. Wait for the GitHub Action to add desmond.min.js/desmond.wasm, then reload.");
+    setStatus("DS emulator runtime is missing. Check that desmond.min.js and desmond.wasm are present locally.");
   }
 });
