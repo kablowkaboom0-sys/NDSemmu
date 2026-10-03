@@ -21,52 +21,78 @@ function clearLoadTimer() {
 function loadRom(file) {
   clearLoadTimer();
 
-  if (!file) return;
+  if (!file) {
+    setStatus("No file was selected. Choose an .nds, .dsi, or .srl file.");
+    return;
+  }
 
-  const lower = file.name.toLowerCase();
+  const lower = (file.name || "").toLowerCase();
   if (!/\.(nds|srl|dsi)$/.test(lower)) {
-    setStatus("Please choose an .nds, .dsi, or .srl file.");
+    setStatus("Selected file is not a DS ROM: " + (file.name || "unknown file"));
     input.value = "";
     return;
   }
 
-  if (romUrl) URL.revokeObjectURL(romUrl);
+  const sizeMB = Math.round((file.size / 1024 / 1024) * 10) / 10;
+  setStatus("Selected: " + file.name + " (" + sizeMB + " MB). Starting emulator…");
+
+  if (romUrl) {
+    URL.revokeObjectURL(romUrl);
+    romUrl = null;
+  }
+
   romUrl = URL.createObjectURL(file);
   running = false;
 
-  setStatus("Loading " + file.name + " (" + Math.round(file.size / 1024 / 1024 * 10) / 10 + " MB)…");
-
   try {
     if (!player || typeof player.loadURL !== "function") {
-      throw new Error("The local DS emulator runtime is not loaded.");
+      throw new Error("The DS emulator runtime is not ready.");
     }
 
-    // Desmond's own demo uses the same object-URL method for local ROM files.
+    // Desmond accepts a browser object URL for locally selected ROM files.
     player.loadURL(romUrl, () => {
       clearLoadTimer();
       running = true;
-      setStatus(file.name + " is running. Arrow keys = D-pad • X = A • Z = B • A = L • S = R • Enter = Start • Shift = Select");
+      setStatus(
+        file.name +
+        " is running. Arrow keys = D-pad • X = A • Z = B • A = L • S = R • Enter = Start • Shift = Select"
+      );
     });
 
-    // The emulator can take a while to initialize its WebAssembly runtime.
-    // Keep the page informative instead of appearing to do nothing.
-    setStatus("Starting " + file.name + "… The DS emulator is initializing locally.");
+    // Keep the selected filename visible even if the emulator takes time to start.
+    setStatus("Selected: " + file.name + " — DS emulator is loading locally…");
+
     loadTimer = setTimeout(() => {
       if (!running) {
-        setStatus("Still loading… If the screen stays blank after 30 seconds, this browser may not support this DS emulator build.");
+        setStatus(
+          "Selected: " + file.name +
+          " — still loading after 30 seconds. The emulator runtime may not be supported by this browser."
+        );
       }
     }, 30000);
   } catch (err) {
     clearLoadTimer();
     console.error(err);
     running = false;
-    setStatus("Could not start the emulator: " + (err?.message || err));
-    URL.revokeObjectURL(romUrl);
-    romUrl = null;
+    setStatus("Emulator error: " + (err?.message || err));
+    if (romUrl) {
+      URL.revokeObjectURL(romUrl);
+      romUrl = null;
+    }
   }
 }
 
-input.addEventListener("change", () => loadRom(input.files && input.files[0]));
+// Listen to both events. Some mobile file browsers dispatch "input"
+// while others dispatch "change".
+input.addEventListener("change", () => {
+  const file = input.files && input.files.length ? input.files[0] : null;
+  loadRom(file);
+});
+
+input.addEventListener("input", () => {
+  const file = input.files && input.files.length ? input.files[0] : null;
+  if (file) loadRom(file);
+});
 
 document.addEventListener("keydown", (event) => {
   if (!running) return;
@@ -99,6 +125,6 @@ window.addEventListener("beforeunload", () => {
 
 window.addEventListener("load", () => {
   if (!customElements.get("desmond-player")) {
-    setStatus("DS emulator runtime is missing. Check that desmond.min.js and desmond.wasm are present locally.");
+    setStatus("DS emulator runtime is missing. Check desmond.min.js and desmond.wasm.");
   }
 });
