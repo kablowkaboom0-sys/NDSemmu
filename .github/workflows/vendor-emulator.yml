@@ -1,0 +1,34 @@
+name: Vendor DS emulator
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  vendor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download emulator runtime into this repository
+        run: |
+          set -e
+          mkdir -p .
+          curl -fL --retry 3 -o desmond.min.js https://raw.githubusercontent.com/js-emulators/desmond/main/dist/desmond.min.js
+          curl -fL --retry 3 -o desmond.wasm https://raw.githubusercontent.com/js-emulators/desmond/main/dist/desmond.wasm
+
+      - name: Commit local runtime
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add desmond.min.js desmond.wasm
+          if git diff --cached --quiet; then
+            echo "Runtime already present."
+          else
+            git commit -m "Vendor local Nintendo DS emulator runtime"
+            git push
+          fi
