@@ -3,3 +3,14 @@
 .controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0;color:#aeb7c4;font-size:13px}
 .controls strong{color:#fff;margin-right:4px}
 .controls span{border:1px solid #303846;border-radius:8px;padding:6px 9px;background:#10151d}
+
+
+#player-wrap {
+  min-height: 480px;
+}
+
+desmond-player {
+  display: block;
+  width: 100%;
+  min-height: 480px;
+}
