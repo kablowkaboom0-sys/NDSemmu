@@ -48,7 +48,7 @@ async function loadRom(file) {
   }
 
   const lower = (file.name || "").toLowerCase();
-  if (!/\.(nds|srl|dsi)$/.test(lower)) {
+  if (!/\\.(nds|srl|dsi)$/.test(lower)) {
     setStatus("Not a supported DS file: " + (file.name || "unknown"));
     input.value = "";
     return;
@@ -65,35 +65,36 @@ async function loadRom(file) {
   running = false;
 
   try {
-    setStatus("FILE SELECTED: " + file.name + " — checking emulator…");
+    setStatus("FILE SELECTED: " + file.name + " — waiting for DS core…");
     await waitForEmulator();
 
     if (token !== loadToken) return;
 
-    setStatus("ROM READ OK: " + file.name + " — starting DS emulator…");
+    if (typeof window.tryLoadROM !== "function") {
+      throw new Error("Desmond ROM loader is not available.");
+    }
 
-    player.loadURL(file, () => {
-      if (token !== loadToken) return;
-      clearLoadTimer();
-      running = true;
-      setStatus(file.name + " is running. Arrow keys = D-pad • X = A • Z = B • A = L • S = R • Enter = Start • Shift = Select");
-    });
+    // Use Desmond's actual asynchronous ROM loader directly. Its public loadURL()
+    // wrapper calls its callback before the async ROM read/boot has finished.
+    setStatus("READING ROM: " + file.name + "…");
+    await window.tryLoadROM(file);
 
+    if (token !== loadToken) return;
+
+    if (!window.emuIsGameLoaded) {
+      throw new Error("The DS core rejected the ROM. Desmond did not report a loaded game.");
+    }
+
+    running = true;
     clearLoadTimer();
-    loadTimer = setTimeout(() => {
-      if (!running && token === loadToken) {
-        setStatus("ERROR: Desmond accepted the ROM but did not finish loading within 30 seconds.");
-      }
-    }, 30000);
+    setStatus(file.name + " is running. Arrow keys = D-pad • Z = A • X = B • A = Y • S = X • Q = L • W = R • Enter = Start • Shift = Select");
   } catch (err) {
     clearLoadTimer();
     running = false;
-    console.error("NDSemmu:", err);
+    console.error("NDSemmu ROM load failed:", err);
     setStatus("ERROR: " + (err?.message || String(err)));
-
   }
 }
-
 function selectedFile() {
   return input.files && input.files.length ? input.files[0] : null;
 }
