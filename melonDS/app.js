@@ -1,0 +1,7 @@
+const romInput=document.getElementById("rom"),status=document.getElementById("status"),fullscreen=document.getElementById("fullscreen");
+function setStatus(message){status.textContent=message;}
+function reportError(message){console.error("melonDS:",message);setStatus("ERROR: "+message);}
+function coreReady(){return typeof window.MelonDSModule==="function";}
+if(!coreReady()) reportError("melonDS WebAssembly core is not present yet."); else setStatus("melonDS core loaded. Choose a .nds file.");
+romInput.addEventListener("change",async()=>{const file=romInput.files?.[0];if(!file)return;if(!/\.(nds|srl|dsi)$/i.test(file.name))return reportError("Unsupported file. Choose an .nds, .srl, or .dsi file.");if(!coreReady())return reportError("melonDS WebAssembly core is not available.");setStatus("Reading "+file.name+"…");try{const bytes=new Uint8Array(await file.arrayBuffer());if(!bytes.length)throw new Error("The selected file is empty.");if(typeof window.startMelonDS!=="function")throw new Error("This melonDS build does not expose the browser ROM API yet.");await window.startMelonDS(bytes);setStatus(file.name+" is running.");}catch(error){reportError(error?.message||String(error));}});
+fullscreen.addEventListener("click",async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();}catch{reportError("Fullscreen is not available in this browser.");}});
