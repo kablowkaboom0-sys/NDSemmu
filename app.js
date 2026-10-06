@@ -3,7 +3,6 @@ const player = document.getElementById("player");
 const status = document.getElementById("status");
 const fullscreen = document.getElementById("fullscreen");
 
-let romUrl = null;
 let loadTimer = null;
 let running = false;
 let loadToken = 0;
@@ -63,8 +62,6 @@ async function loadRom(file) {
     return;
   }
 
-  if (romUrl) URL.revokeObjectURL(romUrl);
-  romUrl = URL.createObjectURL(file);
   running = false;
 
   try {
@@ -73,17 +70,9 @@ async function loadRom(file) {
 
     if (token !== loadToken) return;
 
-    // Verify that the browser can read the locally-created object URL.
-    const probe = await fetch(romUrl);
-    if (!probe.ok) throw new Error("Browser could not read the selected ROM file.");
-    const probeBytes = await probe.arrayBuffer();
-    if (probeBytes.byteLength !== file.size) {
-      throw new Error("ROM file could not be read completely (" + probeBytes.byteLength + "/" + file.size + " bytes).");
-    }
-
     setStatus("ROM READ OK: " + file.name + " — starting DS emulator…");
 
-    player.loadURL(romUrl, () => {
+    player.loadURL(file, () => {
       if (token !== loadToken) return;
       clearLoadTimer();
       running = true;
@@ -102,10 +91,6 @@ async function loadRom(file) {
     console.error("NDSemmu:", err);
     setStatus("ERROR: " + (err?.message || String(err)));
 
-    if (romUrl) {
-      URL.revokeObjectURL(romUrl);
-      romUrl = null;
-    }
   }
 }
 
@@ -138,7 +123,6 @@ fullscreen.addEventListener("click", async () => {
 
 window.addEventListener("beforeunload", () => {
   clearLoadTimer();
-  if (romUrl) URL.revokeObjectURL(romUrl);
 });
 
 window.addEventListener("load", () => {
